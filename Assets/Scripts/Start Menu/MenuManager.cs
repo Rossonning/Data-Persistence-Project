@@ -7,6 +7,7 @@ public class MenuManager : MonoBehaviour
 {
     public static MenuManager Instance;
     public int bestScore = 0;
+    
     public string playerName;
     
     private void Awake()
@@ -33,7 +34,7 @@ public class MenuManager : MonoBehaviour
         
     }
 
-    public string GetPlayerInfo()
+    public string GetBestInfo()
     {
         return "Best Score: " + bestScore + ", Player Name: " + playerName;
     }

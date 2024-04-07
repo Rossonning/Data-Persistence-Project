@@ -1,8 +1,15 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+using System.IO;
+using UnityEditor;
+using File = System.IO.File;
+using Input = UnityEngine.Input;
+using Random = UnityEngine.Random;
+
 
 public class MainManager : MonoBehaviour
 {
@@ -10,25 +17,33 @@ public class MainManager : MonoBehaviour
     public int LineCount = 6;
     public Rigidbody Ball;
 
-    public Text ScoreText;
     public GameObject GameOverText;
     public Text playerInfo;
+    public Text bestPlayerInfo;
+    public Button exitButton;
 
     private bool m_Started = false;
     private int m_Points;
-    
+
     private bool m_GameOver = false;
 
-    
+    private SaveData _saveData;
+
+    private void Awake()
+    {
+        LoadPlayInfo();
+    }
+
     // Start is called before the first frame update
     void Start()
     {
         const float step = 0.6f;
         int perLine = Mathf.FloorToInt(4.0f / step);
 
-        playerInfo.text = MenuManager.Instance.GetPlayerInfo();
+        playerInfo.text = "Score: " + m_Points + ", Name: " + MenuManager.Instance.playerName;
+        bestPlayerInfo.text = GetBestScoreInfo();
 
-        int[] pointCountArray = new [] {1,1,2,2,5,5};
+        int[] pointCountArray = new[] { 1, 1, 2, 2, 5, 5 };
         for (int i = 0; i < LineCount; ++i)
         {
             for (int x = 0; x < perLine; ++x)
@@ -39,6 +54,17 @@ public class MainManager : MonoBehaviour
                 brick.onDestroyed.AddListener(AddPoint);
             }
         }
+    }
+
+    public void Exit()
+    {
+        SavePlayInfo();
+
+        #if UNITY_EDITOR
+            EditorApplication.ExitPlaymode();
+        #else
+            Application.Quit(); // original code to quit Unity player
+        #endif
     }
 
     private void Update()
@@ -68,12 +94,54 @@ public class MainManager : MonoBehaviour
     void AddPoint(int point)
     {
         m_Points += point;
-        ScoreText.text = $"Score : {m_Points}";
+        playerInfo.text = $"Score : {m_Points}";
     }
 
     public void GameOver()
     {
         m_GameOver = true;
         GameOverText.SetActive(true);
+    }
+
+    [System.Serializable]
+    class SaveData
+    {
+        public int bestScore;
+        public string bestScoreOwner;
+    }
+
+    public void SavePlayInfo()
+    {
+        if (_saveData == null || m_Points > _saveData.bestScore)
+        {
+            SaveData data = new SaveData();
+        
+            data.bestScore = m_Points;
+            data.bestScoreOwner = MenuManager.Instance.playerName;
+
+            string json = JsonUtility.ToJson(data);
+            File.WriteAllText(Application.persistentDataPath + "/savefile.json", json);
+        }
+    }
+
+    public void LoadPlayInfo()
+    {
+        string path = Application.persistentDataPath + "/savefile.json";
+        if (File.Exists(path))
+        {
+            string json = File.ReadAllText(path);
+
+            _saveData = JsonUtility.FromJson<SaveData>(json);
+        }
+    }
+
+    private string GetBestScoreInfo()
+    {
+        if (_saveData != null)
+        {
+            return "Best Score: " + _saveData.bestScore + ", Owner: " + _saveData.bestScoreOwner;
+        }
+
+        return "No record";
     }
 }
